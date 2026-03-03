@@ -3,14 +3,33 @@
 <head>
 <meta charset="UTF-8">
 <title>Gestion Gana Ousmane</title>
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
 <style>
-body{font-family:Arial;background:#f4f6f9;margin:0;padding:0;}
+body{font-family:Arial;margin:0;padding:0;background:#f4f6f9;}
+/* Connexion */
+#loginBox{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+    background:#1e3a8a;
+}
+#loginBox .box{
+    background:white;
+    padding:30px;
+    border-radius:10px;
+    width:300px;
+    text-align:center;
+    box-shadow:0 4px 10px rgba(0,0,0,0.3);
+}
+#loginBox input{width:100%;padding:10px;margin:10px 0;border-radius:5px;border:1px solid #ccc;}
+#loginBox button{width:100%;padding:10px;background:#1e3a8a;color:white;border:none;border-radius:5px;cursor:pointer;font-size:16px;}
+#loginBox button:hover{background:#162d66;}
+
+/* Gestion */
+#gestionContainer{display:none;}
 header{background:#1e3a8a;color:white;text-align:center;padding:20px;position:relative}
-.container{width:95%;max-width:1000px;margin:20px auto;background:white;padding:20px;border-radius:10px}
 button{padding:5px 10px;background:#1e3a8a;color:white;border:none;cursor:pointer;margin:2px;}
 button:hover{background:#162d66;}
 table{width:100%;border-collapse:collapse;margin-top:15px;}
@@ -26,6 +45,17 @@ img.employee-photo{width:50px;height:50px;border-radius:50%;}
 </head>
 <body>
 
+<!-- Page Connexion -->
+<div id="loginBox">
+    <div class="box">
+        <h2>Connexion Admin</h2>
+        <input type="password" id="password" placeholder="Mot de passe">
+        <button onclick="login()">Se connecter</button>
+    </div>
+</div>
+
+<!-- Page Gestion -->
+<div id="gestionContainer">
 <header>
 <h1>GESTION GANA OUSMANE SARL</h1>
 <p>27 21 72 41 77 | contact@estganaousmanesarl.com | 11 BP 2399 Abidjan 11</p>
@@ -54,8 +84,7 @@ Photo: <input type="file" id="photo" accept="image/*">
 <th>Actions</th>
 </tr>
 </thead>
-<tbody id="employeTable">
-</tbody>
+<tbody id="employeTable"></tbody>
 </table>
 </div>
 
@@ -67,20 +96,39 @@ Photo: <input type="file" id="photo" accept="image/*">
 <div id="historyContent"></div>
 </div>
 </div>
+</div>
 
 <script>
 const { jsPDF } = window.jspdf;
 
-// Vérification connexion admin
-if(localStorage.getItem("admin") !== "true"){
-    window.location.href = "login.html";
+// Vérification session
+if(localStorage.getItem("admin")==="true"){
+    document.getElementById("loginBox").style.display="none";
+    document.getElementById("gestionContainer").style.display="block";
 }
 
-let employes = JSON.parse(localStorage.getItem("employes")) || [];
+// Connexion
+function login(){
+    let pass = document.getElementById("password").value.trim();
+    if(pass === "admin123"){
+        localStorage.setItem("admin","true");
+        document.getElementById("loginBox").style.display="none";
+        document.getElementById("gestionContainer").style.display="block";
+    } else {
+        alert("Mot de passe incorrect !");
+    }
+}
 
+// Déconnexion
+function logout(){
+    localStorage.removeItem("admin");
+    location.reload();
+}
+
+// Gestion Employés
+let employes = JSON.parse(localStorage.getItem("employes")) || [];
 function save(){ localStorage.setItem("employes", JSON.stringify(employes)); }
 
-// Ajouter un employé
 function ajouterEmploye(){
     let nom=document.getElementById("nom").value.trim();
     let prenom=document.getElementById("prenom").value.trim();
@@ -92,15 +140,7 @@ function ajouterEmploye(){
     if(photoInput){
         let reader = new FileReader();
         reader.onload = function(e){
-            let emp={ 
-                id:Date.now(), 
-                nom, 
-                prenom, 
-                salaire, 
-                reste:salaire, 
-                photo:e.target.result, 
-                transactions:[] 
-            };
+            let emp={ id:Date.now(), nom, prenom, salaire, reste:salaire, photo:e.target.result, transactions:[] };
             employes.push(emp);
             save();
             afficher();
@@ -116,12 +156,10 @@ function ajouterEmploye(){
 
 // Retrait
 function retrait(id){
-    let montant = prompt("Montant à retirer:");
-    montant = parseInt(montant);
+    let montant = parseInt(prompt("Montant à retirer:"));
     if(isNaN(montant) || montant<=0){ alert("Montant invalide"); return; }
     let emp=employes.find(e=>e.id==id);
     if(montant>emp.reste){ alert("Solde insuffisant"); return; }
-
     emp.reste -= montant;
     if(emp.reste<0) emp.reste=0;
     emp.transactions.push({type:"Retrait", montant, date:new Date().toLocaleString()});
@@ -132,11 +170,9 @@ function retrait(id){
 
 // Versement
 function versement(id){
-    let montant = prompt("Montant du versement:");
-    montant = parseInt(montant);
+    let montant = parseInt(prompt("Montant du versement:"));
     if(isNaN(montant) || montant<=0){ alert("Montant invalide"); return; }
     let emp=employes.find(e=>e.id==id);
-
     emp.reste += montant;
     emp.transactions.push({type:"Versement", montant, date:new Date().toLocaleString()});
     save();
@@ -148,33 +184,25 @@ function versement(id){
 function voirHistorique(id){
     let emp = employes.find(e=>e.id==id);
     let div = document.getElementById("historyContent");
-    div.innerHTML = "";
-    if(emp.transactions.length===0) div.innerHTML="Aucune transaction";
-    else{
-        emp.transactions.forEach(t=>{
-            div.innerHTML += `<p>${t.date} - ${t.type} : ${t.montant} FCFA</p>`;
-        });
-    }
+    div.innerHTML = emp.transactions.length===0 ? "Aucune transaction" : "";
+    emp.transactions.forEach(t=>{
+        div.innerHTML += `<p>${t.date} - ${t.type} : ${t.montant} FCFA</p>`;
+    });
     document.getElementById("historyModal").style.display="block";
 }
 function closeModal(){ document.getElementById("historyModal").style.display="none"; }
 
-// PDF Reçu Pro
+// PDF Reçu
 function genererPDF(emp,montant,type){
     let doc=new jsPDF();
-
-    // Fond et titres
     doc.setFontSize(18);
     doc.text("GESTION GANA OUSMANE SARL",20,20);
     doc.setFontSize(10);
     doc.text("27 21 72 41 77 | contact@estganaousmanesarl.com | 11 BP 2399 Abidjan 11",20,28);
     doc.setLineWidth(0.5);
     doc.line(20,32,190,32);
-
-    // Info transaction
     doc.setFontSize(14);
     doc.text(`${type.toUpperCase()} - REÇU`,20,45);
-
     doc.setFontSize(12);
     doc.text(`Nom: ${emp.nom}`,20,55);
     doc.text(`Prénom: ${emp.prenom}`,20,63);
@@ -182,21 +210,17 @@ function genererPDF(emp,montant,type){
     doc.text(`${type} Montant: ${montant} FCFA`,20,79);
     doc.text(`Somme Restante: ${emp.reste} FCFA`,20,87);
     doc.text(`Date: ${new Date().toLocaleString()}`,20,95);
-
-    // QR Code
     let qrData = `Historique de ${emp.nom} - Reste: ${emp.reste} FCFA`;
     doc.addImage(creerQR(qrData), "PNG", 140, 50, 50, 50);
-
     doc.save(`${type}_Recu_${emp.nom}.pdf`);
 }
-
 function creerQR(text){
     let qrCanvas=document.createElement("canvas");
     new QRCode(qrCanvas,{text:text,width:150,height:150});
     return qrCanvas.toDataURL("image/png");
 }
 
-// Imprimer Carte Employé avec photo
+// Carte Employé
 function imprimerCarte(emp){
     let w=window.open("");
     let photoHTML = emp.photo ? `<img src="${emp.photo}" style="width:80px;height:80px;border-radius:50%;"><br>` : "";
@@ -210,7 +234,7 @@ Nom: ${emp.nom}<br>Prénom: ${emp.prenom}<br>Salaire: ${emp.salaire} FCFA<br>Res
     w.print();
 }
 
-// Afficher tableau avec photo
+// Afficher tableau
 function afficher(){
     let tbody=document.getElementById("employeTable");
     tbody.innerHTML="";
@@ -235,12 +259,6 @@ function afficher(){
     });
 }
 afficher();
-
-// Déconnexion
-function logout(){
-    localStorage.removeItem("admin");
-    window.location.href="login.html";
-}
 </script>
 
 </body>
