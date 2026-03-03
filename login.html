@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Connexion - Gestion Gana Ousmane</title>
+<style>
+body{
+font-family:Arial;
+background:#1e3a8a;
+display:flex;
+justify-content:center;
+align-items:center;
+height:100vh;
+}
+.box{
+background:white;
+padding:30px;
+border-radius:10px;
+width:300px;
+text-align:center;
+}
+input{
+width:100%;
+padding:10px;
+margin:10px 0;
+}
+button{
+width:100%;
+padding:10px;
+background:#1e3a8a;
+color:white;
+border:none;
+cursor:pointer;
+}
+</style>
+</head>
+<body>
+
+<div class="box">
+<h2>Connexion Admin</h2>
+<input type="password" id="password" placeholder="Mot de passe">
+<button onclick="login()">Se connecter</button>
+</div>
+
+<script>
+function login(){
+let pass=document.getElementById("password").value;
+
+if(pass==="gana2026"){
+localStorage.setItem("admin","true");
+window.location.href="gestion.html";
+}else{
+alert("Mot de passe incorrect");
+}
+}
+</script>
+
+</body>
+</html>
